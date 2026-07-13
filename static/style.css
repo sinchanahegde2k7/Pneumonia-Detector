@@ -1,0 +1,53 @@
+body {
+    background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%);
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+    border-radius: 16px;
+    background: white;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+h2 {
+    color: #00695c;
+    font-weight: 700;
+}
+
+.btn-primary {
+    background-color: #00897b;
+    border: none;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background-color: #00695c;
+}
+
+#preview {
+    border-radius: 10px;
+    border: 2px solid #b2dfdb;
+}
+
+#result {
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.result-normal {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 2px solid #66bb6a;
+}
+
+.result-pneumonia {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 2px solid #ef5350;
+}

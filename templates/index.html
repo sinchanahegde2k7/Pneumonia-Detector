@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pneumonia Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card p-4 shadow">
+            <h2 class="text-center mb-4">AI Chest X-Ray Pneumonia Detector</h2>
+            
+            <input type="file" id="imageInput" accept="image/*" class="form-control mb-3">
+            
+            <img id="preview" src="" style="display:none; max-width:300px; margin-bottom:15px;">
+            
+            <button onclick="predict()" class="btn btn-primary">Analyze</button>
+            
+            <div id="result" class="mt-4"></div>
+            <p id="explanation" class="mt-2 text-muted"></p>
+            <img id="gradcamImg" src="" style="display:none; max-width:300px; margin-top:15px;">
+            <br>
+            <a id="downloadBtn" href="/download_report" class="btn btn-success mt-3" style="display:none;">Download Report (PDF)</a>
+            
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('imageInput');
+        const preview = document.getElementById('preview');
+
+        input.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+            }
+        });
+
+        function predict() {
+            const file = input.files[0];
+            if (!file) {
+                alert('Please select an image first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            document.getElementById('result').innerHTML = 'Analyzing...';
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = data.label === 'NORMAL' ? 'result-normal' : 'result-pneumonia';
+                resultDiv.innerHTML = `
+    
+                    <h4>Result: ${data.label}</h4>
+                    <p>Confidence: ${data.confidence}%</p>
+                `;
+                const gradcamImg = document.getElementById('gradcamImg');
+                gradcamImg.src = '/' + data.gradcam_path + '?t=' + new Date().getTime();
+                gradcamImg.style.display = 'block';
+                document.getElementById('explanation').innerText = data.explanation;
+                document.getElementById('downloadBtn').style.display = 'inline-block';
+            });
+        }
+    </script>
+</body>
+</html>
