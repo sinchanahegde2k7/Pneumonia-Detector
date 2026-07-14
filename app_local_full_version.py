@@ -32,10 +32,10 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name="out_relu"):
     heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-8)
     return heatmap.numpy()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates_full')
 
 # Load the trained model once when app starts
-
+model = load_model('model/pneumonia_model.h5')
 explanations = {
     "NORMAL": "No visible signs of lung opacity or consolidation were detected. The lung fields appear clear.",
     "PNEUMONIA": "Patterns consistent with lung opacity and consolidation were detected, which are commonly associated with pneumonia."
@@ -61,6 +61,7 @@ def predict():
     img_array = np.expand_dims(img_array, axis=0)
     
     # Predict
+    # Prediction (always uses TFLite)
     img_array = img_array.astype('float32')
     interpreter.set_tensor(input_details[0]['index'], img_array)
     interpreter.invoke()
@@ -74,7 +75,17 @@ def predict():
         confidence = (1 - prediction) * 100
     
     # Generate Grad-CAM heatmap
+    heatmap = make_gradcam_heatmap(img_array, model)
+    heatmap = cv2.resize(heatmap, (224, 224))
+    heatmap = np.uint8(255 * heatmap)
+    heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     
+    original_img = cv2.imread(filepath)
+    original_img = cv2.resize(original_img, (224, 224))
+    superimposed = cv2.addWeighted(original_img, 0.6, heatmap_colored, 0.4, 0)
+    
+    gradcam_path = 'static/gradcam_output.jpg'
+    cv2.imwrite(gradcam_path, superimposed)
     
     explanation = explanations[label]
     
@@ -82,13 +93,13 @@ def predict():
     last_result['confidence'] = round(float(confidence), 2)
     last_result['explanation'] = explanation
     last_result['image_path'] = filepath
-    
+    last_result['gradcam_path'] = gradcam_path
     
     return jsonify({
         'label': label,
         'confidence': round(float(confidence), 2),
         'image_path': filepath,
-        
+        'gradcam_path': gradcam_path,
         'explanation': explanation
     })
 from fpdf import FPDF
@@ -113,7 +124,8 @@ def download_report():
     
     pdf.image(last_result['image_path'], w=80)
     pdf.ln(5)
-    
+    pdf.cell(0, 10, 'Grad-CAM Heatmap (model focus area):', ln=True)
+    pdf.image(last_result['gradcam_path'], w=80)
     
     report_path = 'static/report.pdf'
     pdf.output(report_path)

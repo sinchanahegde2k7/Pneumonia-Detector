@@ -18,7 +18,7 @@
             
             <div id="result" class="mt-4"></div>
             <p id="explanation" class="mt-2 text-muted"></p>
-            
+            <img id="gradcamImg" src="" style="display:none; max-width:300px; margin-top:15px;">
             <br>
             <a id="downloadBtn" href="/download_report" class="btn btn-success mt-3" style="display:none;">Download Report (PDF)</a>
             
@@ -62,7 +62,9 @@
                     <h4>Result: ${data.label}</h4>
                     <p>Confidence: ${data.confidence}%</p>
                 `;
-                
+                const gradcamImg = document.getElementById('gradcamImg');
+                gradcamImg.src = '/' + data.gradcam_path + '?t=' + new Date().getTime();
+                gradcamImg.style.display = 'block';
                 document.getElementById('explanation').innerText = data.explanation;
                 document.getElementById('downloadBtn').style.display = 'inline-block';
             });
