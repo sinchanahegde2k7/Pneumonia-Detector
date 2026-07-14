@@ -30,9 +30,12 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name="out_relu"):
     return heatmap.numpy()
 
 app = Flask(__name__)
-
+model = load_model('model/pneumonia_model.h5')  # for Grad-CAM only
 # Load the trained model once when app starts
-model = load_model('model/pneumonia_model.h5')
+interpreter = tf.lite.Interpreter(model_path='model/pneumonia_model.tflite')
+interpreter.allocate_tensors()
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 explanations = {
     "NORMAL": "No visible signs of lung opacity or consolidation were detected. The lung fields appear clear.",
     "PNEUMONIA": "Patterns consistent with lung opacity and consolidation were detected, which are commonly associated with pneumonia."
@@ -58,7 +61,10 @@ def predict():
     img_array = np.expand_dims(img_array, axis=0)
     
     # Predict
-    prediction = model.predict(img_array)[0][0]
+    img_array = img_array.astype('float32')
+    interpreter.set_tensor(input_details[0]['index'], img_array)
+    interpreter.invoke()
+    prediction = interpreter.get_tensor(output_details[0]['index'])[0][0]
     
     if prediction > 0.5:
         label = "PNEUMONIA"
