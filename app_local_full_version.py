@@ -5,6 +5,26 @@ from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
 import cv2
+import sqlite3
+from datetime import datetime
+
+def init_db():
+    conn = sqlite3.connect('predictions.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT,
+            confidence REAL,
+            timestamp TEXT,
+            feedback TEXT DEFAULT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
 interpreter = tf.lite.Interpreter(model_path='model/pneumonia_model.tflite')
 interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
@@ -88,6 +108,16 @@ def predict():
     cv2.imwrite(gradcam_path, superimposed)
     
     explanation = explanations[label]
+    # Save to database
+    conn = sqlite3.connect('predictions.db')
+    c = conn.cursor()
+    c.execute(
+        'INSERT INTO predictions (label, confidence, timestamp) VALUES (?, ?, ?)',
+        (label, round(float(confidence), 2), datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    )
+    conn.commit()
+    prediction_id = c.lastrowid
+    conn.close()
     
     last_result['label'] = label
     last_result['confidence'] = round(float(confidence), 2)
@@ -131,6 +161,26 @@ def download_report():
     pdf.output(report_path)
     
     return send_file(report_path, as_attachment=True)
+
+@app.route('/history')
+def history():
+    conn = sqlite3.connect('predictions.db')
+    c = conn.cursor()
+    c.execute('SELECT * FROM predictions ORDER BY id DESC LIMIT 10')
+    rows = c.fetchall()
+    conn.close()
+    
+    history_list = []
+    for row in rows:
+        history_list.append({
+            'id': row[0],
+            'label': row[1],
+            'confidence': row[2],
+            'timestamp': row[3],
+            'feedback': row[4]
+        })
+    
+    return jsonify(history_list)
 
 if __name__ == '__main__':
     app.run(debug=False)
